@@ -1,9 +1,12 @@
+package com.service;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.model.Agency;
 import com.model.AgencyList;
 import com.model.CfrReference;
 import com.model.CfrVersionInfo;
+import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -13,47 +16,57 @@ import java.net.URL;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
+import java.util.*;
 
-public class Main {
-    public static void main(String[] args) {
+@Service
+public class AgencyService {
+    private final Map<String, Agency> slugObjAgencyMap = new LinkedHashMap<>();
+    private final Map<String, String> slugNameAgencyMap = new LinkedHashMap<>();
+
+    public AgencyService() {
         try {
             /* Get all government agencies.*/
             String agencyHttpResponse = getHttpResponse("https://www.ecfr.gov/api/admin/v1/agencies.json");
             ObjectMapper mapper = new ObjectMapper();
             AgencyList agencyList = mapper.readValue(agencyHttpResponse, AgencyList.class);
             for (Agency agency : agencyList.getAgencies()) {
-                System.out.println(agency.getName());
-                calculateWordCount(agency);
-                System.out.println(agency.getWordCount());
-                System.out.println();
+                addAgency(agency, slugObjAgencyMap, slugNameAgencyMap);
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
-    private static String getHttpResponse(String urlStr) throws IOException {
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
+    private static void addAgency(Agency agency, Map<String, Agency> slugObjAgencyMap, Map<String, String> slugNameAgencyMap) {
+        slugObjAgencyMap.put(agency.getSlug(), agency);
+        slugNameAgencyMap.put(agency.getSlug(), agency.getName());
 
-        int status = conn.getResponseCode();
+        for (Agency child: agency.getChildren()) {
+            addAgency(child, slugObjAgencyMap, slugNameAgencyMap);
+        }
+    }
 
-        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-        String inputLine;
-        StringBuilder content = new StringBuilder();
+    public Map<String, String> getAllAgencies() {
+        return slugNameAgencyMap;
+    }
 
-        while ((inputLine = in.readLine()) != null) {
-            content.append(inputLine);
+    public long getWordCount(String agencySlug)  {
+        System.out.println("Agency Slug: " + agencySlug);
+        System.out.println("Length of map: " + slugObjAgencyMap.size());
+
+        Agency agency = slugObjAgencyMap.get(agencySlug);
+
+        if (agency.getWordCount() >= 0) {
+            return agency.getWordCount();
         }
 
-        in.close();
-        conn.disconnect();
-
-        return content.toString();
+        try {
+            return calculateWordCount(agency);
+        } catch (IOException exception) {
+            // Log the IOException somehow.
+            return -1;
+        }
     }
 
     private static long calculateWordCount(Agency agency) throws IOException {
@@ -129,5 +142,26 @@ public class Main {
         // Note that I am assuming that there is only one space between sentences (which
         // I spot checked it to be so).
         return plainText.chars().filter(ch -> ch == ' ').count();
+    }
+
+    private static String getHttpResponse(String urlStr) throws IOException {
+        URL url = new URL(urlStr);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        int status = conn.getResponseCode();
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+        String inputLine;
+        StringBuilder content = new StringBuilder();
+
+        while ((inputLine = in.readLine()) != null) {
+            content.append(inputLine);
+        }
+
+        in.close();
+        conn.disconnect();
+
+        return content.toString();
     }
 }

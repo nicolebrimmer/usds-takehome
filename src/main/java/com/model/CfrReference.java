@@ -1,3 +1,5 @@
+package com.model;
+
 public class CfrReference {
 
     String title = "";

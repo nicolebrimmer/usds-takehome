@@ -1,3 +1,5 @@
+package com.model;
+
 import java.util.List;
 
 public class AgencyList {
