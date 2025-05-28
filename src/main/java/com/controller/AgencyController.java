@@ -1,11 +1,9 @@
 package com.controller;
 
-import com.model.Agency;
 import com.service.AgencyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collection;
 import java.util.Map;
 
 @RestController
@@ -20,8 +18,8 @@ public class AgencyController {
         return agencyService.getAllAgencies();
     }
 
-    @GetMapping("/getWordCount/{agencySlug}")
-    public long getWordCount(@PathVariable String agencySlug) {
-        return agencyService.getWordCount(agencySlug);
+    @GetMapping("/getAgencyInfo/{agencySlug}")
+    public Map<String, String> getWordCount(@PathVariable String agencySlug) {
+        return agencyService.getAgencyInfo(agencySlug);
     }
 }

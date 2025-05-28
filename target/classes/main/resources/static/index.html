@@ -8,7 +8,8 @@
     <option value="">Select an agency</option>
 </select>
 
-<div>Word Count: <div id="wordCount"></div></div>
+<div>Word Count: <span id="wordCount"></span></div>
+<div>Checksum: <span id="checksum"></span></div>
 
 <script>
     async function loadAgencies() {
@@ -17,16 +18,16 @@
         if (!response.ok) throw new Error('Network error');
         const agenciesMap = await response.json();
 
-        const dropdown = document.getElementById('agencyDropdown');
-        dropdown.innerHTML = '<option value="">Select an agency</option>'; // reset options
+        const agencyDropdown = document.getElementById('agencyDropdown');
+        agencyDropdown.innerHTML = '<option value="">Select an agency</option>'; // reset options
 
-        for (const id in agenciesMap) {
-          if (agenciesMap.hasOwnProperty(id)) {
-            const name = agenciesMap[id];
+        for (const agencySlug in agenciesMap) {
+          if (agenciesMap.hasOwnProperty(agencySlug)) {
+            const agencyName = agenciesMap[agencySlug];
             const option = document.createElement('option');
-            option.value = id;
-            option.textContent = name;
-            dropdown.appendChild(option);
+            option.value = agencySlug;
+            option.textContent = agencyName;
+            agencyDropdown.appendChild(option);
           }
         }
       } catch (error) {
@@ -36,11 +37,11 @@
 
     function fetchAgencyData() {
       const agencySlug = document.getElementById('agencyDropdown').value;
-      console.log("Agency Slug: " + agencySlug);
-      fetch(`/api/agencies/getWordCount/${agencySlug}`)
-        .then(response => response.text())
+      fetch(`/api/agencies/getAgencyInfo/${agencySlug}`)
+        .then(response => response.json())
         .then(data => {
-          document.getElementById('wordCount').innerText = data;
+          document.getElementById('wordCount').innerText = data["word_count"];
+          document.getElementById('checksum').innerText = data["checksum"];
         });
   }
 

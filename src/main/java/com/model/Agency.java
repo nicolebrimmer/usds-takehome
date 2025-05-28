@@ -21,6 +21,9 @@ public class Agency {
     @JsonIgnore
     long wordCount = -1;
 
+    @JsonIgnore
+    Long checksum = null;
+
     public String getName() {
         return name;
     }
@@ -61,6 +64,14 @@ public class Agency {
         this.wordCount = wordCount;
     }
 
+    public Long getChecksum() {
+        return this.checksum;
+    }
+
+    public void setChecksum(final Long checksum) {
+        this.checksum = checksum;
+    }
+
     @Override
     public String toString() {
         StringBuilder cfrReferencesStr = new StringBuilder();
@@ -73,6 +84,6 @@ public class Agency {
             childrenStr.append(String.format("\t%s", child.toString()));
         }
 
-        return String.format("Name: %s\nSlug: %s\nCFR Reference: %s\nWord Count: %d\nChildren: %s", name, slug, cfrReferencesStr, wordCount, childrenStr);
+        return String.format("Name: %s\nSlug: %s\nCFR Reference: %s\nWord Count: %d\nChecksum: %d\nChildren: %s", name, slug, cfrReferencesStr, wordCount, checksum, childrenStr);
     }
 }

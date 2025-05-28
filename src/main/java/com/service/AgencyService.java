@@ -2,10 +2,7 @@ package com.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
-import com.model.Agency;
-import com.model.AgencyList;
-import com.model.CfrReference;
-import com.model.CfrVersionInfo;
+import com.model.*;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -17,6 +14,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.zip.CRC32;
 
 @Service
 public class AgencyService {
@@ -51,45 +49,48 @@ public class AgencyService {
         return slugNameAgencyMap;
     }
 
-    public long getWordCount(String agencySlug)  {
-        System.out.println("Agency Slug: " + agencySlug);
-        System.out.println("Length of map: " + slugObjAgencyMap.size());
-
+    public Map<String, String> getAgencyInfo(String agencySlug)  {
         Agency agency = slugObjAgencyMap.get(agencySlug);
+        Map<String, String> agencyInfo = new HashMap<String, String>();
 
-        if (agency.getWordCount() >= 0) {
-            return agency.getWordCount();
+        if (agency.getWordCount() < 0) {
+            try {
+                calculateAgencyInfo(agency);
+            } catch (IOException exception) {
+                // Should pass exception to frontend.
+                // Due to time constraints, do nothing.
+            }
         }
 
-        try {
-            return calculateWordCount(agency);
-        } catch (IOException exception) {
-            // Log the IOException somehow.
-            return -1;
-        }
+        agencyInfo.put("word_count", String.valueOf(agency.getWordCount()));
+        agencyInfo.put("checksum", String.valueOf(agency.getChecksum()));
+        return agencyInfo;
     }
 
-    private static long calculateWordCount(Agency agency) throws IOException {
+    private static void calculateAgencyInfo(Agency agency) throws IOException {
         if (agency.getWordCount() >= 0) {
-            return agency.getWordCount();
+            return;
         }
 
-        long totalWordCount = 0;
+        long agencyWordCount = 0;
+        long agencyChecksum = 0;
         for (Agency child: agency.getChildren()) {
-            long agencyWordCount = calculateWordCount(child);
-            totalWordCount += agencyWordCount;
+            calculateAgencyInfo(child);
+            agencyWordCount += child.getWordCount();;
 
         }
 
         for (CfrReference cfrReference: agency.getCfrReferences()) {
-            totalWordCount += getWordCount(cfrReference);
+            CfrReferenceInfo cfrReferenceInfo = getAgencyInfo(cfrReference);
+            agencyWordCount += cfrReferenceInfo.getWordCount();
+            agencyChecksum += cfrReferenceInfo.getChecksum();
         }
 
-        agency.setWordCount(totalWordCount);
-        return totalWordCount;
+        agency.setWordCount(agencyWordCount);
+        agency.setChecksum(agencyChecksum);
     }
 
-    private static long getWordCount(CfrReference cfrReference) throws IOException {
+    private static CfrReferenceInfo getAgencyInfo(CfrReference cfrReference) throws IOException {
         /* Fetch the issue date of the latest version. */
         // Build URL.
         StringBuilder urlParameters = new StringBuilder();
@@ -141,7 +142,13 @@ public class AgencyService {
         // that creates a massive array which can cause issues with the heap.
         // Note that I am assuming that there is only one space between sentences (which
         // I spot checked it to be so).
-        return plainText.chars().filter(ch -> ch == ' ').count();
+        long wordCount = plainText.chars().filter(ch -> ch == ' ').count();
+
+        CRC32 crc = new CRC32();
+        crc.update(plainText.getBytes());
+        long checksum = crc.getValue();
+
+        return new CfrReferenceInfo(wordCount, checksum);
     }
 
     private static String getHttpResponse(String urlStr) throws IOException {
