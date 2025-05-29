@@ -8,8 +8,11 @@
     <option value="">Select an agency</option>
 </select>
 
+<div id="loading"></div>
 <div>Word Count: <span id="wordCount"></span></div>
 <div>Checksum: <span id="checksum"></span></div>
+<div>Average Age of Regulation (in days, weighted by word count of regulation): <span id="avgAgeOfRegulation"></span></div>
+<div>Version History: <div id="versionHistory"></div></div>
 
 <script>
     async function loadAgencies() {
@@ -37,11 +40,21 @@
 
     function fetchAgencyData() {
       const agencySlug = document.getElementById('agencyDropdown').value;
+
+      document.getElementById('loading').innerText = "loading";
+      document.getElementById('wordCount').innerText = "";
+      document.getElementById('checksum').innerText = "";
+      document.getElementById('avgAgeOfRegulation').innerText = "";
+      document.getElementById('versionHistory').innerText = "";
+
       fetch(`/api/agencies/getAgencyInfo/${agencySlug}`)
         .then(response => response.json())
         .then(data => {
+          document.getElementById('loading').innerText = "";
           document.getElementById('wordCount').innerText = data["word_count"];
           document.getElementById('checksum').innerText = data["checksum"];
+          document.getElementById('avgAgeOfRegulation').innerText = data["average_age_of_regulation"];
+          document.getElementById('versionHistory').innerText = data["version_history"];
         });
   }
 

@@ -1,7 +1,9 @@
 package com.model;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.TreeMap;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -23,6 +25,14 @@ public class Agency {
 
     @JsonIgnore
     Long checksum = null;
+
+    /* Sum of the age of all current regulations associated with this agency, weighted by the
+    * regulation's word count. */
+    @JsonIgnore
+    long weightedAgeOfRegulations = 0;
+
+    @JsonIgnore
+    TreeMap<Date, String> versionHistory = new TreeMap<Date, String>();
 
     public String getName() {
         return name;
@@ -70,6 +80,22 @@ public class Agency {
 
     public void setChecksum(final Long checksum) {
         this.checksum = checksum;
+    }
+
+    public long getWeightedAgeOfRegulations() {
+        return weightedAgeOfRegulations;
+    }
+
+    public void setWeightedAgeOfRegulations(long weightedAgeOfRegulations) {
+        this.weightedAgeOfRegulations = weightedAgeOfRegulations;
+    }
+
+    public TreeMap<Date, String> getVersionHistory() {
+        return versionHistory;
+    }
+
+    public void setVersionHistory(TreeMap<Date, String> versionHistory) {
+        this.versionHistory = versionHistory;
     }
 
     @Override

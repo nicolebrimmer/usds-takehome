@@ -10,9 +10,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.zip.CRC32;
 
@@ -62,8 +64,19 @@ public class AgencyService {
             }
         }
 
+        /* Build version history. */
+        StringBuilder versionHistory = new StringBuilder();
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+        for (Map.Entry<Date, String> entry : agency.getVersionHistory().entrySet()) {
+            Date date = entry.getKey();
+            String name = entry.getValue();
+            versionHistory.append(String.format("%s: %s\n", dateFormatter.format(date), name));
+        }
+
         agencyInfo.put("word_count", String.valueOf(agency.getWordCount()));
         agencyInfo.put("checksum", String.valueOf(agency.getChecksum()));
+        agencyInfo.put("average_age_of_regulation", String.valueOf(agency.getWeightedAgeOfRegulations() / agency.getWordCount()));
+        agencyInfo.put("version_history", versionHistory.toString());
         return agencyInfo;
     }
 
@@ -74,20 +87,27 @@ public class AgencyService {
 
         long agencyWordCount = 0;
         long agencyChecksum = 0;
+        long agencyWeightedAgeOfRegulations = 0;
+        TreeMap<Date, String> agencyVersionHistory = new TreeMap<Date, String>();
         for (Agency child: agency.getChildren()) {
             calculateAgencyInfo(child);
-            agencyWordCount += child.getWordCount();;
-
+            agencyWordCount += child.getWordCount();
+            agencyChecksum += child.getChecksum();
+            agencyWeightedAgeOfRegulations += child.getWeightedAgeOfRegulations();
         }
 
         for (CfrReference cfrReference: agency.getCfrReferences()) {
             CfrReferenceInfo cfrReferenceInfo = getAgencyInfo(cfrReference);
             agencyWordCount += cfrReferenceInfo.getWordCount();
             agencyChecksum += cfrReferenceInfo.getChecksum();
+            agencyWeightedAgeOfRegulations += cfrReferenceInfo.getAgeInDays() * cfrReferenceInfo.getWordCount();
+            agencyVersionHistory.putAll(cfrReferenceInfo.getVersionHistory());
         }
 
         agency.setWordCount(agencyWordCount);
         agency.setChecksum(agencyChecksum);
+        agency.setWeightedAgeOfRegulations(agencyWeightedAgeOfRegulations);
+        agency.setVersionHistory(agencyVersionHistory);
     }
 
     private static CfrReferenceInfo getAgencyInfo(CfrReference cfrReference) throws IOException {
@@ -147,8 +167,16 @@ public class AgencyService {
         CRC32 crc = new CRC32();
         crc.update(plainText.getBytes());
         long checksum = crc.getValue();
+        
+        long ageInDays = ChronoUnit.DAYS.between(localLatestIssueDate, LocalDate.now());
 
-        return new CfrReferenceInfo(wordCount, checksum);
+        // Build the version history.
+        TreeMap<Date, String> versionHistory = new TreeMap<Date, String>();
+        for (CfrVersionInfo.ContentVersion contentVersion: cfrVersionInfo.getContentVersions()) {
+            versionHistory.put(contentVersion.getDate(), contentVersion.getName());
+        }
+
+        return new CfrReferenceInfo(wordCount, checksum, ageInDays, versionHistory);
     }
 
     private static String getHttpResponse(String urlStr) throws IOException {
