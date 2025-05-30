@@ -19,7 +19,7 @@ public class AgencyController {
     }
 
     @GetMapping("/getAgencyInfo/{agencySlug}")
-    public Map<String, String> getWordCount(@PathVariable String agencySlug) {
+    public Map<String, String> getAgencyInfo(@PathVariable String agencySlug) {
         return agencyService.getAgencyInfo(agencySlug);
     }
 }
